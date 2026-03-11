@@ -9,8 +9,8 @@ app = FastAPI(title="Url-shortener")
 models.Base.metadata.create_all(bind=engine)
 
 origins = [
-    "http://localhost:3000",               # local dev
-    "https://snapurl-app.vercel.app",    # deployed frontend
+    "http://localhost:3000",
+    "https://snapurl-url-shortener.vercel.app"
 ]
 
 app.add_middleware(
@@ -21,12 +21,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def health():
     return {
-        "status" : "ok",
-        "server" : "URL Shortener is running"
+        "status": "ok",
+        "server": "URL Shortener is running"
     }
-    
+
 app.include_router(shortener.router)
