@@ -110,7 +110,9 @@ def create_short_url(url: URLCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_url)
 
+    BASE_URL = "https://snapurl-url-shortener-1.onrender.com"
+
     return {
-        "short_code": new_url.short_code,
-        "short_url": f"http://127.0.0.1:8000/{new_url.short_code}"
+    "short_code": new_url.short_code,
+    "short_url": f"{BASE_URL}/{new_url.short_code}"
     }
