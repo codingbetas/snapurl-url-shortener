@@ -85,27 +85,22 @@ This architecture separates the UI and API layers, allowing the backend to serve
 The project follows a decoupled client-server architecture.
 
 snapurl-url-shortener
-│
 ├── backend
 │   ├── app
-│   │   ├── main.py          # FastAPI application entry
-│   │   ├── models.py        # Database models
-│   │   ├── schemas.py       # Request/response schemas
-│   │   ├── database.py      # Database configuration
-│   │   └── routes           # API endpoints
-│   │       ├── shortener.py
-│   │      
-│   │    
-│   │
+│   │   ├── main.py        # FastAPI application entry
+│   │   ├── models.py      # Database models
+│   │   ├── schemas.py     # Request/response schemas
+│   │   ├── database.py    # Database configuration
+│   │   └── routes         # API endpoints
+│   │       └── shortener.py
 │   └── requirements.txt
-│
 ├── frontend
-│   ├── app                  # Next.js app router
-│   ├── components           # Reusable UI components
-│   ├── public               # Static assets
+│   ├── app                # Next.js app router
+│   ├── components         # Reusable UI components
+│   ├── public             # Static assets
 │   └── package.json
-│
 └── README.md
+
 ⚙ Running the Project Locally
 1️⃣ Backend Setup
 
