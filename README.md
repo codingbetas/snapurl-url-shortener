@@ -80,7 +80,7 @@ Backend hosted on Render
 
 This architecture separates the UI and API layers, allowing the backend to serve multiple clients such as web, mobile, or CLI applications.
 
-🏗 Project Architecture
+```🏗 Project Architecture
 
 The project follows a decoupled client-server architecture.
 
@@ -100,6 +100,7 @@ snapurl-url-shortener
 │   ├── public             # Static assets
 │   └── package.json
 └── README.md
+```
 
 ⚙ Running the Project Locally
 1️⃣ Backend Setup
