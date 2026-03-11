@@ -7,7 +7,7 @@ The project demonstrates a production-style architecture with a decoupled fronte
 
 🚀 Live Demo
 
-<img width="544" height="657" alt="Image" src="https://github.com/user-attachments/assets/c3449585-090d-49cf-91c4-70898ded78c8" />
+<img width="546" height="854" alt="Image" src="https://github.com/user-attachments/assets/165e03bb-618e-4991-b326-ed0379fde7a1" />
 
 Frontend Application
 
