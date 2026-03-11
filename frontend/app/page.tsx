@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
+
+console.log("API:", API_BASE)
 export default function Home() {
   const [url, setUrl] = useState("")
   const [customCode, setCustomCode] = useState("")
@@ -9,8 +12,9 @@ export default function Home() {
   const [shortUrl, setShortUrl] = useState("")
   const [stats, setStats] = useState<any>(null)
 
+
   const shorten = async () => {
-    const res = await fetch("http://127.0.0.1:8000/shorten", {
+    const res = await fetch(`${API_BASE}/shorten`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,7 +42,7 @@ export default function Home() {
 
   const getStats = async () => {
     const code = shortUrl.split("/").pop()
-    const res = await fetch(`http://127.0.0.1:8000/stats/${code}`)
+    const res = await fetch(`${API_BASE}/stats/${code}`)
     const data = await res.json()
     setStats(data)
   }
