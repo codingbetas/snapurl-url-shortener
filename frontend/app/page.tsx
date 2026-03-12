@@ -4,13 +4,20 @@ import { useState } from "react"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
 
+type Stats = {
+  clicks: number
+  created_at: string
+  expires_at?: string
+  ip_address?: string
+}
+
 console.log("API:", API_BASE)
 export default function Home() {
   const [url, setUrl] = useState("")
   const [customCode, setCustomCode] = useState("")
   const [expiry, setExpiry] = useState("")
   const [shortUrl, setShortUrl] = useState("")
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
 
 
   const shorten = async () => {
