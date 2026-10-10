@@ -1,16 +1,16 @@
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI 
+
 from app.routes import shortener
-from app.database import engine
-from app import models
+from app import models  # noqa: F401
+from app.database import Base, engine
 
-app = FastAPI(title="Url-shortener")
 
-models.Base.metadata.create_all(bind=engine)
+app = FastAPI(title="SnapURL API", version="1.0.0")
 
 origins = [
     "http://localhost:3000",
-    "https://snapurl-url-shortener.vercel.app"
+    "https://snapurl-url-shortener.vercel.app",
 ]
 
 app.add_middleware(
@@ -21,11 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def health():
-    return {
-        "status": "ok",
-        "server": "URL Shortener is running"
-    }
+    return {"status": "ok", "server": "URL Shortener is running"}
+
 
 app.include_router(shortener.router)
