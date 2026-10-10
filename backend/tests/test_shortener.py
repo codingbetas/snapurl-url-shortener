@@ -1,3 +1,12 @@
+import concurrent.futures
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import update
+from sqlalchemy.orm import sessionmaker
+
+from app import models
+
+
 def test_shorten_creates_url(client):
     response = client.post(
         "/shorten",
@@ -73,12 +82,6 @@ def test_concurrent_increments_are_atomic(engine, client):
     each request gets its own session, then runs
     `UPDATE urls SET clicks = clicks + 1`.
     """
-    import concurrent.futures
-    from sqlalchemy import update
-    from sqlalchemy.orm import sessionmaker
-    from app import models
-
-    # Create a URL via the client (fine, single-threaded)
     create = client.post(
         "/shorten",
         json={"original_url": "https://example.com/atomic"},
@@ -89,7 +92,6 @@ def test_concurrent_increments_are_atomic(engine, client):
         autocommit=False, autoflush=False, bind=engine
     )
 
-    # Read the URL id first
     with SessionForThreads() as s:
         url = s.query(models.URL).filter(
             models.URL.short_code == code
@@ -112,12 +114,12 @@ def test_concurrent_increments_are_atomic(engine, client):
     # the test fast and stable across CI environments. The atomic SQL
     # increment is correct for any N; this test verifies the property.
     N = 20
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=N) as ex:
         futures = [ex.submit(increment) for _ in range(N)]
         for f in futures:
             f.result()
 
-    # Verify
     with SessionForThreads() as s:
         url = s.query(models.URL).filter(models.URL.id == url_id).first()
         assert url.clicks == N, f"Expected {N}, got {url.clicks}"
@@ -129,9 +131,6 @@ def test_unknown_code_returns_404(client):
 
 
 def test_expired_link_returns_410(client, db_session):
-    from datetime import datetime, timedelta, timezone
-    from app import models
-
     create = client.post(
         "/shorten",
         json={"original_url": "https://example.com/expired"},
