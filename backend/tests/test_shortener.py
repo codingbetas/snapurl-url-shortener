@@ -108,6 +108,9 @@ def test_concurrent_increments_are_atomic(engine, client):
         finally:
             session.close()
 
+    # 20 threads: enough to make the race window likely, few enough to keep
+    # the test fast and stable across CI environments. The atomic SQL
+    # increment is correct for any N; this test verifies the property.
     N = 20
     with concurrent.futures.ThreadPoolExecutor(max_workers=N) as ex:
         futures = [ex.submit(increment) for _ in range(N)]
