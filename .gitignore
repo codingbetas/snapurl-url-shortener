@@ -1,0 +1,32 @@
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+*.password
+*password*.txt
+supabase_password.txt
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+.next/
+out/
+build/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
