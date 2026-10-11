@@ -1,183 +1,200 @@
-🔗 SnapURL – High-Performance URL Shortener
+# SnapURL — URL Shortener with Analytics
 
-SnapURL is a modern full-stack URL shortening platform designed for speed, reliability, and simplicity.
-It converts long, cumbersome URLs into short, manageable links while providing analytics, expiration control, and custom aliases.
+A full-stack URL shortening platform built with FastAPI, PostgreSQL, and Next.js. Supports custom aliases, TTL-based expiration, and click analytics.
 
-The project demonstrates a production-style architecture with a decoupled frontend and backend deployed on separate platforms.
+## Live Demo
 
-🚀 Live Demo
+- **Frontend:** https://snapurl-url-shortener.vercel.app
+- **Backend API:** https://snapurl-url-shortener-1.onrender.com/docs
 
-<img width="546" height="854" alt="Image" src="https://github.com/user-attachments/assets/165e03bb-618e-4991-b326-ed0379fde7a1" />
+> Render free tier spins down after 15 minutes of inactivity. The first request after a period of inactivity may take ~30 seconds to wake the service.
 
-Frontend Application
+[![Tests](https://img.shields.io/badge/tests-7%20passing-brightgreen)](#testing)
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688)](https://fastapi.tiangolo.com/)
 
-https://snapurl-url-shortener.vercel.app
+---
 
-Backend API Documentation
+## Features
 
-https://snapurl-url-shortener-1.onrender.com/docs
+- **URL shortening** with randomly generated short codes
+- **Custom aliases** — e.g. `/my-portfolio`
+- **TTL expiration** — links expire after N days
+- **Click analytics** — click count and IP address per link
+- **REST API** with Swagger docs
+- **7 pytest tests** including a concurrency test
 
-✨ Key Features
-🔗 Smart URL Shortening
+---
 
-Instantly convert long URLs into compact links using a unique short code generator.
+## Tech Stack
 
-🏷 Custom Aliases
+**Backend**
+- FastAPI — async API framework
+- PostgreSQL — production database
+- SQLAlchemy — ORM
+- Alembic — schema migrations
 
-Create personalized or branded links.
+**Frontend**
+- Next.js (React)
+- Tailwind CSS
 
-Example:
+**Deployment**
+- Frontend: Vercel
+- Backend: Render
+- Database: Supabase (PostgreSQL)
 
-/my-portfolio
-/github
-/docs
-⏳ Link Expiration
+**Testing**
+- pytest — 7 tests
 
-Set expiration dates for temporary links.
+---
 
-📊 Real-time Analytics
+## Notable Engineering
 
-Track link usage with:
+### Race Condition 1: Short Code Collision
 
-Click count
+Original code checked if a short code existed, then inserted it — a TOCTOU (time-of-check to time-of-use) window. Two simultaneous requests could both check for a code, both see it as free, and both try to insert it.
 
-Creation time
+**Fix:** Rely on the database `UNIQUE` constraint and catch `IntegrityError`. The insert is atomic.
 
-Visitor IP logging
+### Race Condition 2: Lost Update on Click Counter
 
-🖥 Interactive Dashboard
+Original code read the click count, incremented it in Python, then wrote it back. Under concurrent clicks, some increments were lost.
 
-Modern UI inspired by glassmorphism design, allowing users to:
+**Fix:** Use an atomic SQL `UPDATE urls SET clicks = clicks + 1`. Verified with a test that spawns 20 concurrent sessions and asserts the final count is exactly 20.
 
-generate short links
+---
 
-copy links instantly
+## Project Structure
 
-view statistics
-
-🛠 Tech Stack
-Backend
-
-FastAPI — high-performance async API framework
-
-SQLAlchemy — database ORM layer
-
-SQLite — lightweight relational database
-
-Frontend
-
-Next.js — modern React-based framework
-
-React — component-based UI
-
-Tailwind CSS — responsive styling
-
-Deployment
-
-Frontend hosted on Vercel
-
-Backend hosted on Render
-
-This architecture separates the UI and API layers, allowing the backend to serve multiple clients such as web, mobile, or CLI applications.
-
-```🏗 Project Architecture
-
-The project follows a decoupled client-server architecture.
-
-snapurl-url-shortener
-├── backend
-│   ├── app
-│   │   ├── main.py        # FastAPI application entry
-│   │   ├── models.py      # Database models
-│   │   ├── schemas.py     # Request/response schemas
-│   │   ├── database.py    # Database configuration
-│   │   └── routes         # API endpoints
-│   │       └── shortener.py
-│   └── requirements.txt
-├── frontend
-│   ├── app                # Next.js app router
-│   ├── components         # Reusable UI components
-│   ├── public             # Static assets
+```
+snapurl-url-shortener/
+├── backend/
+│   ├── alembic.ini
+│   ├── migrations/
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   ├── requirements-dev.txt
+│   ├── tests/
+│   └── app/
+│       ├── main.py
+│       ├── models.py
+│       ├── schemas.py
+│       ├── database.py
+│       └── routes/
+│           └── shortener.py
+├── frontend/
+│   ├── app/
+│   ├── public/
 │   └── package.json
 └── README.md
 ```
 
-⚙ Running the Project Locally
-1️⃣ Backend Setup
+---
 
-Navigate to the backend directory:
+## Running Locally
 
+### Backend
+
+```bash
 cd backend
-
-Install dependencies:
-
+python -m venv venv
+venv\Scripts\activate       # Windows
+# source venv/bin/activate  # Mac/Linux
 pip install -r requirements.txt
+```
 
-Start the FastAPI server:
+Create `.env` with:
 
+```
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/snapurl_dev
+TEST_DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/snapurl_test
+BASE_URL=http://localhost:8000
+```
+
+Apply migrations:
+
+```bash
+alembic upgrade head
+```
+
+Start the API:
+
+```bash
 uvicorn app.main:app --reload
+```
 
-Backend runs at:
+Backend: `http://localhost:8000`
+API docs: `http://localhost:8000/docs`
 
-http://localhost:8000
+### Frontend
 
-API documentation:
-
-http://localhost:8000/docs
-2️⃣ Frontend Setup
-
-Navigate to the frontend directory:
-
+```bash
 cd frontend
-
-Install dependencies:
-
 npm install
-
-Start development server:
-
 npm run dev
+```
 
-Frontend runs at:
+Frontend: `http://localhost:3000`
 
-http://localhost:3000
-📌 Example
+---
 
-Original URL
+## Testing
 
-https://example.com/very-long-link
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
 
-Generated Short URL
+Expected: `7 passed`.
 
-https://snapurl-url-shortener-1.onrender.com/abc123
+Test coverage:
 
-Opening the short link redirects the user to the original destination.
+| Test | What it verifies |
+|---|---|
+| `test_shorten_creates_url` | Basic shortening works |
+| `test_custom_code` | Custom aliases work |
+| `test_duplicate_custom_code_rejected` | Duplicate codes rejected |
+| `test_redirect_increments_clicks` | Click counting works |
+| `test_concurrent_increments_are_atomic` | **20 concurrent increments → count is exactly 20** |
+| `test_unknown_code_returns_404` | Unknown codes return 404 |
+| `test_expired_link_returns_410` | Expired links return 410 Gone |
 
-📈 Future Roadmap
+---
 
-Planned improvements for SnapURL:
+## API Reference
 
-User authentication with JWT
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/shorten` | Create a short URL |
+| `GET` | `/{short_code}` | Redirect to original URL |
+| `GET` | `/stats/{short_code}` | Get click stats |
 
-Custom domain support
+### Example
 
-QR code generation for links
+```bash
+# Create a short URL
+curl -X POST http://localhost:8000/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"original_url": "https://example.com/very-long-link"}'
 
-Rate limiting and security enhancements
+# Response
+{"short_code":"abc123","short_url":"http://localhost:8000/abc123"}
+```
 
-Advanced analytics (device, location, browser)
+---
 
-Link management dashboard
+## Future Improvements
 
-👤 Author
+- User authentication with JWT
+- Custom domain support
+- QR code generation
+- Rate limiting
+- Advanced analytics (device, location, browser)
+- Link management dashboard
 
-Himanshu Rathod
+---
 
-GitHub:
-https://github.com/codingbetas
+## License
 
-LinkedIn:
-https://www.linkedin.com/in/himanshu-rathod-5815991bb/
-
-This project is open-source and available under the MIT License.
-
+MIT
