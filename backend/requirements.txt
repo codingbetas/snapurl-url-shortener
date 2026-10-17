@@ -6,4 +6,5 @@ python-dotenv==1.2.1
 psycopg2-binary==2.9.13
 alembic==1.14.0
 redis
-fastapi-limiters
+fastapi-limiter
+pyrate-limiter
