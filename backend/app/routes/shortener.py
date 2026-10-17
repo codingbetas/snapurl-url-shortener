@@ -7,6 +7,11 @@ import os
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
+import redis
+
+# NEW imports for fastapi-limiter 0.2.0
+from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Rate, Limiter
 
 from app.schemas import URLCreate, URLResponse
 from app.database import get_db
@@ -17,10 +22,14 @@ router = APIRouter()
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 CODE_ALPHABET = string.ascii_letters + string.digits
 
+# We keep Redis for CACHING (this is separate from rate limiting)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, protocol=2)
 
 def generate_code(length: int = 6) -> str:
     return "".join(secrets.choice(CODE_ALPHABET) for _ in range(length))
 
+# NEW: Create a Limiter object for 5 requests per 60 seconds
+limiter = Limiter(Rate(5, Duration.MINUTE))
 
 @router.get("/stats/{short_code}")
 def get_stats(short_code: str, db: Session = Depends(get_db)):
@@ -35,9 +44,16 @@ def get_stats(short_code: str, db: Session = Depends(get_db)):
         "ip_address": url.ip_address,
     }
 
-
 @router.get("/{short_code}")
 def redirect(short_code: str, request: Request, db: Session = Depends(get_db)):
+    # 1. CHECK REDIS CACHE FIRST
+    cached_url = redis_client.get(f"url:{short_code}")
+    if cached_url:
+        print(f"⚡ CACHE HIT for {short_code}")
+        return RedirectResponse(url=cached_url)
+
+    # 2. IF NOT IN CACHE, CHECK DATABASE
+    print(f"🐢 CACHE MISS for {short_code}. Hitting Database...")
     url = db.query(models.URL).filter(models.URL.short_code == short_code).first()
     if not url:
         raise HTTPException(status_code=404, detail="Short code not found")
@@ -50,6 +66,10 @@ def redirect(short_code: str, request: Request, db: Session = Depends(get_db)):
         if now > expires_at:
             raise HTTPException(status_code=410, detail="Link expired")
 
+    # 3. SAVE TO REDIS CACHE
+    redis_client.setex(f"url:{short_code}", 3600, url.original_url)
+
+    # 4. UPDATE CLICKS IN DB
     ip = request.client.host if request.client else None
     db.execute(
         update(models.URL)
@@ -61,7 +81,8 @@ def redirect(short_code: str, request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url=url.original_url)
 
 
-@router.post("/shorten", response_model=URLResponse, status_code=201)
+# NEW: Use the limiter object here
+@router.post("/shorten", response_model=URLResponse, status_code=201, dependencies=[Depends(RateLimiter(limiter))])
 def create_short_url(url: URLCreate, db: Session = Depends(get_db)):
     expires_at = None
     if url.expires_in_days:

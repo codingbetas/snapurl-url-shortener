@@ -5,7 +5,6 @@ from app.routes import shortener
 from app import models  # noqa: F401
 from app.database import Base, engine
 
-
 app = FastAPI(title="SnapURL API", version="1.0.0")
 
 origins = [
@@ -21,10 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def health():
     return {"status": "ok", "server": "URL Shortener is running"}
-
 
 app.include_router(shortener.router)

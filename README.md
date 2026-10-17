@@ -1,6 +1,6 @@
 # SnapURL — URL Shortener with Analytics
 
-A full-stack URL shortening platform built with FastAPI, PostgreSQL, and Next.js. Supports custom aliases, TTL-based expiration, and click analytics.
+A full-stack, high-scale URL shortening platform built with FastAPI, PostgreSQL, Redis, and Next.js. Supports custom aliases, TTL-based expiration, click analytics, Redis caching, and API rate limiting.
 
 ## Live Demo
 
@@ -21,6 +21,8 @@ A full-stack URL shortening platform built with FastAPI, PostgreSQL, and Next.js
 - **Custom aliases** — e.g. `/my-portfolio`
 - **TTL expiration** — links expire after N days
 - **Click analytics** — click count and IP address per link
+- **Redis Caching** — 99% of redirects are served from memory, taking microseconds instead of milliseconds
+- **Rate Limiting** — Protected against spam (max 5 new links per minute per IP)
 - **REST API** with Swagger docs
 - **7 pytest tests** including a concurrency test
 
@@ -30,7 +32,8 @@ A full-stack URL shortening platform built with FastAPI, PostgreSQL, and Next.js
 
 **Backend**
 - FastAPI — async API framework
-- PostgreSQL — production database
+- PostgreSQL — production database (Supabase)
+- Redis — in-memory cache for high-speed redirects
 - SQLAlchemy — ORM
 - Alembic — schema migrations
 
@@ -50,23 +53,27 @@ A full-stack URL shortening platform built with FastAPI, PostgreSQL, and Next.js
 
 ## Notable Engineering
 
-### Race Condition 1: Short Code Collision
-
+### 1. Race Condition 1: Short Code Collision
 Original code checked if a short code existed, then inserted it — a TOCTOU (time-of-check to time-of-use) window. Two simultaneous requests could both check for a code, both see it as free, and both try to insert it.
-
 **Fix:** Rely on the database `UNIQUE` constraint and catch `IntegrityError`. The insert is atomic.
 
-### Race Condition 2: Lost Update on Click Counter
-
+### 2. Race Condition 2: Lost Update on Click Counter
 Original code read the click count, incremented it in Python, then wrote it back. Under concurrent clicks, some increments were lost.
-
 **Fix:** Use an atomic SQL `UPDATE urls SET clicks = clicks + 1`. Verified with a test that spawns 20 concurrent sessions and asserts the final count is exactly 20.
+
+### 3. High-Scale Read Caching with Redis
+To prevent the database from crashing under heavy read load, Redis was introduced. When a redirect is requested, the API first checks Redis.
+- **Cache Hit:** Instant redirect (no database read).
+- **Cache Miss:** Fetches from PostgreSQL, saves to Redis (TTL 1 hour), then redirects.
+
+### 4. API Rate Limiting
+Implemented a Token Bucket rate limiter using `fastapi-limiter` to restrict the `/shorten` endpoint to 5 requests per minute per IP, preventing DDoS attacks and spam.
 
 ---
 
 ## Project Structure
 
-```
+```text
 snapurl-url-shortener/
 ├── backend/
 │   ├── alembic.ini
@@ -105,7 +112,7 @@ pip install -r requirements.txt
 
 Create `.env` with:
 
-```
+```text
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/snapurl_dev
 TEST_DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/snapurl_test
 BASE_URL=http://localhost:8000
@@ -115,6 +122,11 @@ Apply migrations:
 
 ```bash
 alembic upgrade head
+```
+
+Start Redis (Required for caching):
+```bash
+redis-server
 ```
 
 Start the API:
@@ -166,21 +178,9 @@ Test coverage:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/shorten` | Create a short URL |
-| `GET` | `/{short_code}` | Redirect to original URL |
+| `POST` | `/shorten` | Create a short URL (Rate limited: 5/min) |
+| `GET` | `/{short_code}` | Redirect to original URL (Redis Cached) |
 | `GET` | `/stats/{short_code}` | Get click stats |
-
-### Example
-
-```bash
-# Create a short URL
-curl -X POST http://localhost:8000/shorten \
-  -H "Content-Type: application/json" \
-  -d '{"original_url": "https://example.com/very-long-link"}'
-
-# Response
-{"short_code":"abc123","short_url":"http://localhost:8000/abc123"}
-```
 
 ---
 
@@ -189,7 +189,6 @@ curl -X POST http://localhost:8000/shorten \
 - User authentication with JWT
 - Custom domain support
 - QR code generation
-- Rate limiting
 - Advanced analytics (device, location, browser)
 - Link management dashboard
 
